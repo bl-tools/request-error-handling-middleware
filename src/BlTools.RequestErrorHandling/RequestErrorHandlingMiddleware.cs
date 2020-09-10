@@ -27,7 +27,7 @@ namespace BlTools.RequestErrorHandling
 
         public async Task InvokeAsync(HttpContext httpContext)
         {
-            var start = Stopwatch.GetTimestamp();
+            var stopwatch = Stopwatch.StartNew();
             try
             {
                 Activity.Current.AddTag("RequestMethod", httpContext.Request.Method);
@@ -39,28 +39,29 @@ namespace BlTools.RequestErrorHandling
                 await _next(httpContext);
 
                 Activity.Current.AddTag("StatusCode", httpContext.Response.StatusCode.ToString());
-                Activity.Current.AddTag("Elapsed", GetElapsedMilliseconds(start, Stopwatch.GetTimestamp()).ToString(CultureInfo.InvariantCulture));
+                Activity.Current.AddTag("Elapsed", stopwatch.ElapsedMilliseconds.ToString(CultureInfo.InvariantCulture));
 
+                var logLevel = _options.GetLogLevel(httpContext, 0, null);
                 if (resolvedAction != null)
                 {
                     Activity.Current.AddTag("IsSuccess", "True");
-                    LogAsResolvedActionWithSuccessResult(LogLevel.Information);
+                    LogAsResolvedActionWithSuccessResult(logLevel);
                 }
                 else
                 {
                     Activity.Current.AddTag("IsSuccess", "False");
-                    LogAsNotResolvedAction(LogLevel.Information);
+                    LogAsNotResolvedAction(logLevel);
                 }
             }
 
             catch (Exception ex)
             {
-                var elapsedMilliseconds = GetElapsedMilliseconds(start, Stopwatch.GetTimestamp());
-                var isExceptionHandled = await TryHandleExceptionAsync(httpContext, ex, elapsedMilliseconds);
+                var isExceptionHandled = await TryHandleExceptionAsync(httpContext, ex, stopwatch.ElapsedMilliseconds);
                 if (!isExceptionHandled)
                 {
                     Activity.Current.AddTag("StatusCode", ((int)HttpStatusCode.InternalServerError).ToString());
-                    LogAsOkResolvedActionWithFailedResult(_options.GetLogLevel(httpContext, elapsedMilliseconds, ex), ex);
+                    var logLevel = _options.GetLogLevel(httpContext, stopwatch.ElapsedMilliseconds, ex);
+                    LogAsOkResolvedActionWithFailedResult(logLevel, ex);
                     throw;
                 }
             }
@@ -129,12 +130,6 @@ namespace BlTools.RequestErrorHandling
         private void LogAsNotResolvedAction(LogLevel logLevel, Exception ex = null)
         {
             _logger.Log(logLevel, ex, _options.MessageTemplateForNotResolvedAction);
-        }
-
-        private static double GetElapsedMilliseconds(long start, long stop)
-        {
-            var elapsedMilliseconds = ((stop - start) * 1000L) / (double)Stopwatch.Frequency;
-            return elapsedMilliseconds;
         }
 
         private static string GetPath(HttpContext httpContext)
