@@ -5,7 +5,7 @@
     <LangVersion>8</LangVersion>
     <Description>Middleware for logging request and building response based by exception</Description>
     <Authors>BlTools</Authors>
-    <PackageVersion>1.0.0.0</PackageVersion>
+    <PackageVersion>1.0.0</PackageVersion>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Company>bl-tools</Company>
@@ -16,10 +16,9 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.2.2" />
     <PackageReference Include="Microsoft.AspNetCore.Routing" Version="2.2.2" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="3.1.7" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="3.1.9" />
     <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="4.7.1" />
     <PackageReference Include="System.Text.Json" Version="4.7.2" />
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="3.1.7" />
   </ItemGroup>
   
   <ItemGroup>
