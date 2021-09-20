@@ -5,7 +5,7 @@
     <LangVersion>8</LangVersion>
     <Description>Middleware for logging request and building response based by exception</Description>
     <Authors>BlTools</Authors>
-    <PackageVersion>1.0.1</PackageVersion>
+    <Version>1.0.1</Version>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Company>bl-tools</Company>
