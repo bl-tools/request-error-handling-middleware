@@ -16,16 +16,36 @@ namespace BlTools.RequestErrorHandling.Models
             return ex == null && context.Response.StatusCode <= 499 ? LogLevel.Information : LogLevel.Error;
         }
 
+        private static bool DefaultCheckRequestBodyShouldBeLogged(HttpContext _)
+        {
+            return false;
+        }
+
+        private static bool DefaultCheckResponseBodyShouldBeLogged(HttpContext _)
+        {
+            return false;
+        }
+
         public Func<HttpContext, double, Exception, LogLevel> GetLogLevel { get; set; }
+
+
+        internal Func<HttpContext, bool> CheckRequestBodyShouldBeLogged { get; set; }
+        internal Func<HttpContext, bool> CheckResponseBodyShouldBeLogged { get; set; }
+
+
         public string MessageTemplateForNotResolvedAction { get; set; }
         public string MessageTemplateForResolvedActionWithSuccessResult { get; set; }
         public string MessageTemplateForResolvedActionWithFailedResult { get; set; }
+
+        internal bool IsAdditionalLoggingOptionsEnabled { get; private set; }
 
         internal List<IExceptionResponseMapping> ExceptionResponseMappingCollection { get; }
 
         internal RequestErrorHandlingOptions()
         {
             GetLogLevel = DefaultGetLogLevel;
+            CheckRequestBodyShouldBeLogged = DefaultCheckRequestBodyShouldBeLogged;
+            CheckResponseBodyShouldBeLogged = DefaultCheckResponseBodyShouldBeLogged;
             MessageTemplateForNotResolvedAction = defaultMessageTemplateForNotResolvedAction;
             MessageTemplateForResolvedActionWithSuccessResult = defaultMessageTemplateForResolvedActionWithSuccessResult;
             MessageTemplateForResolvedActionWithFailedResult = defaultMessageTemplateForResolvedActionWithFailedResult;
@@ -36,7 +56,27 @@ namespace BlTools.RequestErrorHandling.Models
             where T : Exception
         {
             ExceptionResponseMappingCollection.Add(mapping);
+            if (mapping.IsNeedToLogRequestBody)
+            {
+                IsAdditionalLoggingOptionsEnabled = true;
+            }
             return this;
+        }
+
+        public void EnableAdditionalLoggingOptions(Func<HttpContext, bool> checkRequestBodyShouldBeLogged,
+                                                   Func<HttpContext, bool> checkResponseBodyShouldBeLogged)
+        {
+            if (checkRequestBodyShouldBeLogged != null)
+            {
+                IsAdditionalLoggingOptionsEnabled = true;
+                CheckRequestBodyShouldBeLogged = checkRequestBodyShouldBeLogged;
+            }
+
+            if (checkResponseBodyShouldBeLogged != null)
+            {
+                IsAdditionalLoggingOptionsEnabled = true;
+                CheckResponseBodyShouldBeLogged = checkResponseBodyShouldBeLogged;
+            }
         }
     }
 }
