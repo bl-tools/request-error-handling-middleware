@@ -67,7 +67,7 @@ namespace BlTools.RequestErrorHandling
             }
         }
 
-        private Task<bool> TryHandleExceptionAsync(HttpContext httpContext, Exception ex, double elapsedMilliseconds)
+        private async Task<bool> TryHandleExceptionAsync(HttpContext httpContext, Exception ex, double elapsedMilliseconds)
         {
             Activity.Current.AddTag("Elapsed", elapsedMilliseconds.ToString(CultureInfo.InvariantCulture));
             Activity.Current.AddTag("IsSuccess", "False");
@@ -87,7 +87,7 @@ namespace BlTools.RequestErrorHandling
                 var responsePayload = exceptionMapping.BuildResponsePayload(ex);
                 if (responsePayload != null)
                 {
-                    httpContext.Response.WriteAsync(responsePayload);
+                    await httpContext.Response.WriteAsync(responsePayload);
                 }
 
                 Activity.Current.AddTag("StatusCode", httpContext.Response.StatusCode.ToString());
@@ -95,7 +95,7 @@ namespace BlTools.RequestErrorHandling
                 LogAsOkResolvedActionWithFailedResult(exceptionMapping.LogLevel, ex);
             }
 
-            return Task.FromResult(isMappingFound);
+            return isMappingFound;
         }
 
         private static string GetResolvedAction(HttpContext httpContext)
