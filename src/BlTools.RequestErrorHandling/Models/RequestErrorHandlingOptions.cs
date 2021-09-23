@@ -27,11 +27,8 @@ namespace BlTools.RequestErrorHandling.Models
         }
 
         public Func<HttpContext, double, Exception, LogLevel> GetLogLevel { get; set; }
-
-
         internal Func<HttpContext, bool> CheckRequestBodyShouldBeLogged { get; set; }
         internal Func<HttpContext, bool> CheckResponseBodyShouldBeLogged { get; set; }
-
 
         public string MessageTemplateForNotResolvedAction { get; set; }
         public string MessageTemplateForResolvedActionWithSuccessResult { get; set; }

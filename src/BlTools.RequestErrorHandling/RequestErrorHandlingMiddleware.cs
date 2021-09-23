@@ -207,8 +207,8 @@ namespace BlTools.RequestErrorHandling
             }
 
             using var streamReader = new StreamReader(requestStream);
-
             var requestBody = await streamReader.ReadToEndAsync();
+
             return requestBody;
         }
 
