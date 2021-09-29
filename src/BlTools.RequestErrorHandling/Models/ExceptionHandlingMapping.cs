@@ -18,6 +18,8 @@ namespace BlTools.RequestErrorHandling.Models
         public HttpStatusCode StatusCode { get; set; } = HttpStatusCode.OK;
         public LogLevel LogLevel { get; set; } = LogLevel.Information;
         public bool IsNeedToLogExceptionStackTrace { get; set; } = false;
+        public bool IsNeedToLogRequestBody { get; set; } = false;
+        public bool IsNeedToLogResponseBody { get; set; } = false;
 
         public ExceptionResponseMapping(Func<T, object> buildResponseObjectFunc)
         {

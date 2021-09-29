@@ -10,6 +10,8 @@ namespace BlTools.RequestErrorHandling.Models
         HttpStatusCode StatusCode { get; }
         LogLevel LogLevel { get; }
         bool IsNeedToLogExceptionStackTrace { get; }
+        bool IsNeedToLogRequestBody { get; }
+        bool IsNeedToLogResponseBody { get; }
 
         string BuildResponsePayload(Exception exception);
     }

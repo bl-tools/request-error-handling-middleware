@@ -5,8 +5,10 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Diagnostics;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Net;
+using System.Text;
 using System.Threading.Tasks;
 using BlTools.RequestErrorHandling.Models;
 
@@ -28,6 +30,10 @@ namespace BlTools.RequestErrorHandling
         public async Task InvokeAsync(HttpContext httpContext)
         {
             var stopwatch = Stopwatch.StartNew();
+
+            var originalResponseBodyStream = httpContext.Response.Body;
+            MemoryStream memoryResponseStream = null;
+
             try
             {
                 Activity.Current.AddTag("RequestMethod", httpContext.Request.Method);
@@ -36,12 +42,30 @@ namespace BlTools.RequestErrorHandling
                 var resolvedAction = GetResolvedAction(httpContext);
                 Activity.Current.AddTag("ResolvedAction", resolvedAction);
 
+                if (_options.IsAdditionalLoggingOptionsEnabled)
+                {
+                    httpContext.Request.EnableBuffering();
+                    memoryResponseStream = SwapResponseStream(httpContext);
+                }
+
                 await _next(httpContext);
+
+                var isRequestBodyShouldBeLogged = _options.CheckRequestBodyShouldBeLogged(httpContext, stopwatch.ElapsedMilliseconds);
+                if (isRequestBodyShouldBeLogged)
+                {
+                    await LogRequestBodyAsync(httpContext);
+                }
+
+                var isResponseBodyShouldBeLogged = _options.CheckResponseBodyShouldBeLogged(httpContext, stopwatch.ElapsedMilliseconds);
+                if (isResponseBodyShouldBeLogged && memoryResponseStream != null)
+                {
+                    LogResponseBody(memoryResponseStream);
+                }
 
                 Activity.Current.AddTag("StatusCode", httpContext.Response.StatusCode.ToString());
                 Activity.Current.AddTag("Elapsed", stopwatch.ElapsedMilliseconds.ToString(CultureInfo.InvariantCulture));
 
-                var logLevel = _options.GetLogLevel(httpContext, 0, null);
+                var logLevel = _options.GetLogLevel(httpContext, stopwatch.ElapsedMilliseconds, null);
                 if (resolvedAction != null)
                 {
                     Activity.Current.AddTag("IsSuccess", "True");
@@ -53,7 +77,6 @@ namespace BlTools.RequestErrorHandling
                     LogAsNotResolvedAction(logLevel);
                 }
             }
-
             catch (Exception ex)
             {
                 var isExceptionHandled = await TryHandleExceptionAsync(httpContext, ex, stopwatch.ElapsedMilliseconds);
@@ -63,6 +86,15 @@ namespace BlTools.RequestErrorHandling
                     var logLevel = _options.GetLogLevel(httpContext, stopwatch.ElapsedMilliseconds, ex);
                     LogAsOkResolvedActionWithFailedResult(logLevel, ex);
                     throw;
+                }
+            }
+            finally
+            {
+                if (memoryResponseStream != null)
+                {
+                    memoryResponseStream.Seek(0, SeekOrigin.Begin);
+                    await memoryResponseStream.CopyToAsync(originalResponseBodyStream);
+                    memoryResponseStream.Dispose();
                 }
             }
         }
@@ -83,15 +115,26 @@ namespace BlTools.RequestErrorHandling
             {
                 httpContext.Response.ContentType = "application/json";
                 httpContext.Response.StatusCode = (int)exceptionMapping.StatusCode;
-                
+
+                if (exceptionMapping.IsNeedToLogRequestBody)
+                {
+                    await LogRequestBodyAsync(httpContext);
+                }
+
                 var responsePayload = exceptionMapping.BuildResponsePayload(ex);
                 if (responsePayload != null)
                 {
                     await httpContext.Response.WriteAsync(responsePayload);
+
+                    if (exceptionMapping.IsNeedToLogResponseBody)
+                    {
+                        Activity.Current.AddTag("ResponseBody", responsePayload);
+                    }
                 }
 
                 Activity.Current.AddTag("StatusCode", httpContext.Response.StatusCode.ToString());
                 ex = exceptionMapping.IsNeedToLogExceptionStackTrace ? ex : null;
+
                 LogAsOkResolvedActionWithFailedResult(exceptionMapping.LogLevel, ex);
             }
 
@@ -132,9 +175,50 @@ namespace BlTools.RequestErrorHandling
             _logger.Log(logLevel, ex, _options.MessageTemplateForNotResolvedAction);
         }
 
+        private async Task LogRequestBodyAsync(HttpContext httpContext)
+        {
+            var requestBodyContent = await ReadRequestBodyAsync(httpContext.Request.Body);
+            if (requestBodyContent != null)
+            {
+                Activity.Current.AddTag("RequestBody", requestBodyContent);
+            }
+        }
+
+        private static void LogResponseBody(MemoryStream responseStream)
+        {
+            var responseBodyArray = responseStream.ToArray();
+            var response = Encoding.UTF8.GetString(responseBodyArray);
+            if (!string.IsNullOrWhiteSpace(response))
+            {
+                Activity.Current.AddTag("ResponseBody", response);
+            }
+        }
+
         private static string GetPath(HttpContext httpContext)
         {
             return httpContext.Features.Get<IHttpRequestFeature>()?.RawTarget ?? httpContext.Request.Path.ToString();
+        }
+
+        private static async Task<string> ReadRequestBodyAsync(Stream requestStream)
+        {
+            if (!requestStream.CanSeek)
+            {
+                return string.Empty;
+            }
+
+            requestStream.Position = 0;
+            using var streamReader = new StreamReader(requestStream);
+            var requestBody = await streamReader.ReadToEndAsync();
+
+            return requestBody;
+        }
+
+        private static MemoryStream SwapResponseStream(HttpContext httpContext)
+        {
+            var memoryResponseStream = new MemoryStream();
+            httpContext.Response.Body = memoryResponseStream;
+
+            return memoryResponseStream;
         }
     }
 }
