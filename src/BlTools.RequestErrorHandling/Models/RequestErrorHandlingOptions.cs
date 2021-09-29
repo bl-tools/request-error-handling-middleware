@@ -16,19 +16,19 @@ namespace BlTools.RequestErrorHandling.Models
             return ex == null && context.Response.StatusCode <= 499 ? LogLevel.Information : LogLevel.Error;
         }
 
-        private static bool DefaultCheckRequestBodyShouldBeLogged(HttpContext _)
+        private static bool DefaultCheckRequestBodyShouldBeLogged(HttpContext context, double duration)
         {
             return false;
         }
 
-        private static bool DefaultCheckResponseBodyShouldBeLogged(HttpContext _)
+        private static bool DefaultCheckResponseBodyShouldBeLogged(HttpContext context, double duration)
         {
             return false;
         }
 
         public Func<HttpContext, double, Exception, LogLevel> GetLogLevel { get; set; }
-        internal Func<HttpContext, bool> CheckRequestBodyShouldBeLogged { get; set; }
-        internal Func<HttpContext, bool> CheckResponseBodyShouldBeLogged { get; set; }
+        internal Func<HttpContext, double, bool> CheckRequestBodyShouldBeLogged { get; set; }
+        internal Func<HttpContext, double, bool> CheckResponseBodyShouldBeLogged { get; set; }
 
         public string MessageTemplateForNotResolvedAction { get; set; }
         public string MessageTemplateForResolvedActionWithSuccessResult { get; set; }
@@ -60,9 +60,14 @@ namespace BlTools.RequestErrorHandling.Models
             return this;
         }
 
-        public void EnableAdditionalLoggingOptions(Func<HttpContext, bool> checkRequestBodyShouldBeLogged,
-                                                   Func<HttpContext, bool> checkResponseBodyShouldBeLogged)
+        public void EnableAdditionalLoggingOptions(Func<HttpContext, double, bool> checkRequestBodyShouldBeLogged,
+                                                   Func<HttpContext, double, bool> checkResponseBodyShouldBeLogged)
         {
+            if (checkRequestBodyShouldBeLogged == null && checkResponseBodyShouldBeLogged == null)
+            {
+                throw new ArgumentNullException();
+            }
+
             if (checkRequestBodyShouldBeLogged != null)
             {
                 IsAdditionalLoggingOptionsEnabled = true;

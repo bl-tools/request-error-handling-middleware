@@ -50,13 +50,13 @@ namespace BlTools.RequestErrorHandling
 
                 await _next(httpContext);
 
-                var isRequestBodyShouldBeLogged = _options.CheckRequestBodyShouldBeLogged(httpContext);
+                var isRequestBodyShouldBeLogged = _options.CheckRequestBodyShouldBeLogged(httpContext, stopwatch.ElapsedMilliseconds);
                 if (isRequestBodyShouldBeLogged)
                 {
                     await LogRequestBodyAsync(httpContext);
                 }
 
-                var isResponseBodyShouldBeLogged = _options.CheckResponseBodyShouldBeLogged(httpContext);
+                var isResponseBodyShouldBeLogged = _options.CheckResponseBodyShouldBeLogged(httpContext, stopwatch.ElapsedMilliseconds);
                 if (isResponseBodyShouldBeLogged && memoryResponseStream != null)
                 {
                     LogResponseBody(memoryResponseStream);
@@ -65,7 +65,7 @@ namespace BlTools.RequestErrorHandling
                 Activity.Current.AddTag("StatusCode", httpContext.Response.StatusCode.ToString());
                 Activity.Current.AddTag("Elapsed", stopwatch.ElapsedMilliseconds.ToString(CultureInfo.InvariantCulture));
 
-                var logLevel = _options.GetLogLevel(httpContext, 0, null);
+                var logLevel = _options.GetLogLevel(httpContext, stopwatch.ElapsedMilliseconds, null);
                 if (resolvedAction != null)
                 {
                     Activity.Current.AddTag("IsSuccess", "True");
@@ -201,11 +201,12 @@ namespace BlTools.RequestErrorHandling
 
         private static async Task<string> ReadRequestBodyAsync(Stream requestStream)
         {
-            if (requestStream.CanSeek)
+            if (!requestStream.CanSeek)
             {
-                requestStream.Position = 0;
+                return string.Empty;
             }
 
+            requestStream.Position = 0;
             using var streamReader = new StreamReader(requestStream);
             var requestBody = await streamReader.ReadToEndAsync();
 
