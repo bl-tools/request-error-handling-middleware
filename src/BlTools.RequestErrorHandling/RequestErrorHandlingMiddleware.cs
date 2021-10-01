@@ -160,38 +160,32 @@ namespace BlTools.RequestErrorHandling
             return resolvedAction;
         }
 
-        private void LogAsResolvedActionWithSuccessResult(LogLevel logLevel, Exception ex = null)
+        private void LogAsResolvedActionWithSuccessResult(LogLevel logLevel)
         {
-            _logger.Log(logLevel, ex, _options.MessageTemplateForResolvedActionWithSuccessResult);
+            _logger.Log(logLevel, _options.MessageTemplateForResolvedActionWithSuccessResult);
         }
 
-        private void LogAsOkResolvedActionWithFailedResult(LogLevel logLevel, Exception ex = null)
+        private void LogAsOkResolvedActionWithFailedResult(LogLevel logLevel, Exception ex)
         {
             _logger.Log(logLevel, ex, _options.MessageTemplateForResolvedActionWithFailedResult);
         }
 
-        private void LogAsNotResolvedAction(LogLevel logLevel, Exception ex = null)
+        private void LogAsNotResolvedAction(LogLevel logLevel)
         {
-            _logger.Log(logLevel, ex, _options.MessageTemplateForNotResolvedAction);
+            _logger.Log(logLevel, _options.MessageTemplateForNotResolvedAction);
         }
 
         private async Task LogRequestBodyAsync(HttpContext httpContext)
         {
             var requestBodyContent = await ReadRequestBodyAsync(httpContext.Request.Body);
-            if (requestBodyContent != null)
-            {
-                Activity.Current.AddTag("RequestBody", requestBodyContent);
-            }
+            Activity.Current.AddTag("RequestBody", requestBodyContent);
         }
 
         private static void LogResponseBody(MemoryStream responseStream)
         {
             var responseBodyArray = responseStream.ToArray();
             var response = Encoding.UTF8.GetString(responseBodyArray);
-            if (!string.IsNullOrWhiteSpace(response))
-            {
-                Activity.Current.AddTag("ResponseBody", response);
-            }
+            Activity.Current.AddTag("ResponseBody", response);
         }
 
         private static string GetPath(HttpContext httpContext)
